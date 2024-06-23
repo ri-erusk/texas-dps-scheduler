@@ -1,7 +1,7 @@
 {
   "name": "texas-dps-scheduler",
-  "version": "2.2.1",
-  "description": "Texas DPS Automatic Scheduler",
+  "version": "2.3.0",
+  "description": "Texas DPS Automatic Appointment Scheduler",
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

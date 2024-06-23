@@ -25,13 +25,13 @@ const configZod = z.object({
                 start: z.number(),
                 end: z.number(),
             })
-            .refine(checkStartLowerThanEnd, { message: 'Start number must be lower than end number' }),
+            .refine(checkStartLowerThanEnd, { message: 'Starting number must be lower than ending number.' }),
         timesAround: z
             .object({
                 start: z.number(),
                 end: z.number(),
             })
-            .refine(checkStartLowerThanEnd, { message: 'Start number must be lower than end number' }),
+            .refine(checkStartLowerThanEnd, { message: 'Starting number must be lower than ending number.' }),
     }),
     appSettings: z.object({
         cancelIfExist: z.boolean().default(false),

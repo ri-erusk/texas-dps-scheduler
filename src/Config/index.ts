@@ -8,7 +8,7 @@ import dayjs from 'dayjs';
 
 const parseConfig = (): Config => {
     if (!existsSync('./config.yml')) {
-        log.error('Not found config.yml file');
+        log.error('No config file found. Please refer to example.config.yml.');
         process.exit(0);
     }
 
@@ -19,7 +19,7 @@ const parseConfig = (): Config => {
     configData.personalInfo.phoneNumber = parsePhoneNumber(configData.personalInfo.phoneNumber);
     let startDate = dayjs(configData.location.daysAround.startDate);
     if (!configData.location.daysAround.startDate || !startDate.isValid() || startDate.isBefore(dayjs())) {
-        log.warn('Invalid date in config.yml, using current date');
+        //log.info('Using current date as startDate.');
         startDate = dayjs();
     }
     configData.location.daysAround.startDate = startDate.format('MM/DD/YYYY');
@@ -27,7 +27,7 @@ const parseConfig = (): Config => {
     try {
         return configZod.parse(configData);
     } catch (e) {
-        log.error('Config file is not valid');
+        log.error('Config file is not valid. Please refer to example.config.yml.');
         console.error(e);
         process.exit(1);
     }

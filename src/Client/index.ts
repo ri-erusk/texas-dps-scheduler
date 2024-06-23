@@ -40,9 +40,12 @@ class TexasScheduler {
 
     public constructor() {
         // eslint-disable-next-line @typescript-eslint/no-var-requires, prettier/prettier
-        if (this.config.appSettings.webserver) require('http').createServer((req: any, res: any) => res.end('Bot is alive!')).listen(process.env.PORT || 3000);
-        log.info(`Texas Scheduler v${packagejson.version} is starting...`);
-        log.info('Requesting Available Location....');
+        if (this.config.appSettings.webserver)
+            require('http')
+                .createServer((req: any, res: any) => res.end('Bot is alive!'))
+                .listen(process.env.PORT || 3000);
+        log.info(`${packagejson.description} is starting...`);
+        log.info('Requesting list of locations...');
         if (!existsSync('cache')) mkdirSync('cache');
         this.run();
     }
@@ -51,8 +54,8 @@ class TexasScheduler {
         this.existBooking = await this.checkExistBooking();
         const { exist, response } = this.existBooking;
         if (exist) {
-            log.warn(`You have an existing booking at ${response[0].SiteName} ${dayjs(response[0].BookingDateTime).format('MM/DD/YYYY hh:mm A')}`);
-            log.warn(`The bot will continue to run, but will cancel existing booking if it found a new one`);
+            log.warn(`You have an existing booking at ${response[0].SiteName} ${dayjs(response[0].BookingDateTime).format('MM/DD/YYYY hh:mm A')}.`);
+            log.warn(`This application will continue to run, and cancel the existing booking if a new one is found.`);
         }
         await this.requestAvailableLocation();
         await this.getLocationDatesAll();
@@ -83,7 +86,7 @@ class TexasScheduler {
             LastName: this.config.personalInfo.lastName,
         };
         await this.requestApi('/api/CancelBooking', 'POST', requestBody);
-        log.info('Canceled booking successfully');
+        log.info('Appointment cancelled.');
     }
 
     public async getResponseId() {
@@ -118,23 +121,23 @@ class TexasScheduler {
 
         return finalArray.sort((a, b) => a.Distance - b.Distance).filter((elem, index) => finalArray.findIndex(obj => obj.Id === elem.Id) === index);
     }
+
     public async requestAvailableLocation(): Promise<void> {
         const response = await this.getAllLocationFromZipCodes();
         if (this.config.location.pickDPSLocation) {
             if (existsSync('././cache/location.json')) {
                 this.availableLocation = JSON.parse(readFileSync('././cache/location.json', 'utf-8'));
-                log.info('Found cached location selection, using cached location selection');
-                log.info('If you want to change location selection, please delete cache folder!');
+                log.info('Found location selcetion cache. To reset, delete the cache folder.');
                 return;
             }
             const userResponse = await prompts({
                 type: 'multiselect',
                 name: 'location',
-                message: 'Choose DPS location, you can choose multiple location!',
+                message: 'Choose DPS Location',
                 choices: response.map(el => ({ title: `${el.Name} - ${el.Address} - ${el.Distance} miles away from ${el.ZipCode}!`, value: el })),
             });
             if (!userResponse.location || userResponse.location.length === 0) {
-                log.error('You must choose at least one location!');
+                log.error('You must choose at least one location.');
                 process.exit(1);
             }
             this.availableLocation = userResponse.location;
@@ -143,21 +146,21 @@ class TexasScheduler {
         }
         const filteredResponse = response.filter((location: AvailableLocationResponse) => location.Distance < this.config.location.miles);
         if (filteredResponse.length === 0) {
-            log.error(`No Available location found! Nearest location is ${response[0].Distance} miles away! Please change your config and try again!`);
+            log.error(`No locations found. The nearest location is ${response[0].Distance} miles away. Please update your settings and try again.`);
             process.exit(0);
         }
-        log.info(`Found ${filteredResponse.length} Available location that match your criteria`);
+        log.info(`Found ${filteredResponse.length} locations that match your settings.`);
         log.info(`${filteredResponse.map(el => el.Name).join(', ')}`);
         this.availableLocation = filteredResponse;
         return;
     }
 
     private async getLocationDatesAll() {
-        log.info('Checking Available Location Dates....');
+        log.info('Checking locations for available appointments...');
         if (!this.availableLocation) return;
         const getLocationFunctions = this.availableLocation.map(location => () => this.getLocationDates(location));
         for (;;) {
-            console.log('--------------------------------------------------------------------------------');
+            console.log('------------------------------------------------------------------------------------------------------------------------');
             await this.queue.addAll(getLocationFunctions).catch(() => null);
             await sleep.setTimeout(this.config.appSettings.interval);
         }
@@ -204,22 +207,16 @@ class TexasScheduler {
 
             const booking = filteredAvailabilityDates[0].AvailableTimeSlots[0];
 
-            log.info(`${location.Name} is Available on ${booking.FormattedStartDateTime}`);
+            log.info(`${location.Name} is available on ${booking.FormattedStartDateTime}! Booking appointment...`);
             if (!this.queue.isPaused) this.queue.pause();
             if (!this.config.appSettings.cancelIfExist && this.existBooking?.exist) {
-                log.warn('cancelIfExist is disabled! Please cancel existing appointment manually!');
+                log.warn('Cancel existing appointment is disabled. Please cancel your existing appointment manually.');
                 process.exit(0);
             }
-            this.holdSlot(booking, location);
+            //this.holdSlot(booking, location);
             return Promise.resolve(true);
         }
-        log.info(
-            `${location.Name} is not Available in ${
-                locationConfig.sameDay
-                    ? 'the same day'
-                    : `around ${locationConfig.daysAround.start}-${locationConfig.daysAround.end} days from ${this.config.location.daysAround.startDate}!`
-            } `,
-        );
+        log.info(`${location.Name} is not available ${locationConfig.sameDay ? 'today.' : `in the next ${locationConfig.daysAround.end} days.`} `);
 
         return Promise.reject();
     }
@@ -238,11 +235,11 @@ class TexasScheduler {
         });
         if (response.statusCode !== 200) {
             if (retryTime < this.config.appSettings.maxRetry) {
-                log.warn(`Got ${response.statusCode} status code, retrying...`);
+                log.warn(`Received status code ${response.statusCode}. Retrying...`);
                 log.error((await response.body.text()) ?? '');
                 return this.requestApi(path, method, body, retryTime + 1);
             }
-            log.error(`Got ${response.statusCode} status code, retrying failed!`);
+            log.error(`Received status code ${response.statusCode}. Retry failed.`);
             process.exit(1);
         }
         return response;
@@ -259,20 +256,21 @@ class TexasScheduler {
         };
         const response = (await this.requestApi('/api/HoldSlot', 'POST', requestBody).then(res => res.body.json())) as HoldSlotResponse;
         if (response.SlotHeldSuccessfully !== true) {
-            log.error(`Failed to hold slot: ${response.ErrorMessage}`);
+            log.error(`Failed to hold appointment slot.`);
+            log.error(`Error Message: ${response.ErrorMessage}`);
             if (this.queue.isPaused) this.queue.start();
             return;
         }
-        log.info('Slot hold successfully');
+        log.info('Appointment slot held successfully.');
         this.isHolded = true;
         await this.bookSlot(booking, location);
     }
 
     private async bookSlot(booking: AvailableTimeSlots, location: AvailableLocationResponse) {
         if (this.isBooked) return;
-        log.info('Booking slot....');
+        log.info('Booking appointment...');
         if (this.existBooking?.exist) {
-            log.info(`Canceling existing booking ${this.existBooking.response[0].ConfirmationNumber}`);
+            log.info(`Canceling existing appointment: ${this.existBooking.response[0].ConfirmationNumber}.`);
             await this.cancelBooking(this.existBooking.response[0].ConfirmationNumber);
         }
         const requestBody: BookSlotPayload = {
@@ -299,20 +297,19 @@ class TexasScheduler {
             const bookingInfo = (await response.body.json()) as BookSlotResponse;
             if (bookingInfo?.Booking === null) {
                 if (this.queue.isPaused) this.queue.start();
-                log.error('Failed to book slot');
+                log.error('Failed to book appointment.');
                 log.error(JSON.stringify(bookingInfo));
                 this.isHolded = false;
                 return;
             }
             const appointmentURL = `https://public.txdpsscheduler.com/?b=${bookingInfo.Booking.ConfirmationNumber}`;
             this.isBooked = true;
-            log.info(`Slot booked successfully. Confirmation Number: ${bookingInfo.Booking.ConfirmationNumber}`);
-            log.info(`Visiting this link to print your booking:`);
-            log.info(appointmentURL);
+            log.info(`Appointment booked successfully. Confirmation Number: ${bookingInfo.Booking.ConfirmationNumber}.`);
+            log.info(`Please visit the following URL to print your confirmation: ${appointmentURL}.`);
             process.exit(0);
         } else {
             if (this.queue.isPaused) this.queue.start();
-            log.error('Failed to book slot');
+            log.error('Failed to book appointment.');
             log.error(await response.body.text());
         }
     }

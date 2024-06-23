@@ -10,15 +10,13 @@ dayjs.tz.setDefault('America/Chicago');
 
 const timeNow = () => dayjs().format('MM/DD/YYYY h:mm:ss');
 
-const msg = (func: any, message: string) => func(`${yellow(`[${timeNow()}]`)} ${green(message)}`);
+//const msg = (func: any, message: string) => func(`${yellow(`[${timeNow()}]`)} ${green(message)}`);
+const msg = (func: any, message: string) => func(`${yellow(`[${timeNow()}]`)} ${message}`);
 
-const error = (message = 'Unknown error', err?: Error) => {
-    console.error(`[${yellow(timeNow())}] ERROR: ${red(message)}`);
-    if (err) console.error(err);
-};
+const info = (message: string) => msg(console.info, `${green(`${message}`)}`);
 
-const info = (message: string) => msg(console.info, message);
+const warn = (message: string) => msg(console.warn, `${yellow(`${message}`)}`);
 
-const warn = (message: string) => msg(console.warn, `${yellow('WARNING ->')} ${message}`);
+const error = (message: string) => msg(console.error, `${red(`${message}`)}`);
 
 export { error, info, warn };
